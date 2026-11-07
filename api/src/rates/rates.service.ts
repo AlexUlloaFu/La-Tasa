@@ -9,7 +9,7 @@ export type PriceChange = {
 };
 
 export type CurrencyPair = {
-  currency: 'USD' | 'ZELLE' | 'USDT' | 'EUR' | 'MLC';
+  currency: 'USD' | 'ZELLE' | 'USDT' | 'BINANCE' | 'EUR' | 'MLC';
   buy: number;
   sell: number;
   change?: PriceChange | null;
@@ -37,6 +37,7 @@ const FALLBACK: RatesResponse = {
     { currency: 'USD', buy: 925, sell: 940 },
     { currency: 'ZELLE', buy: 910, sell: 925 },
     { currency: 'USDT', buy: 920, sell: 935 },
+    { currency: 'BINANCE', buy: 915, sell: 930 },
     { currency: 'EUR', buy: 1005, sell: 1025 },
     { currency: 'MLC', buy: 645, sell: 665 },
   ],

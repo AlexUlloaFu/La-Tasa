@@ -2,7 +2,7 @@ import { Logo } from "@/components/Logo";
 import { RatesBoard } from "@/components/RatesBoard";
 
 type CurrencyPair = {
-	currency: "USD" | "ZELLE" | "USDT" | "EUR" | "MLC";
+	currency: "USD" | "ZELLE" | "USDT" | "BINANCE" | "EUR" | "MLC";
 	buy: number;
 	sell: number;
 };
@@ -82,7 +82,7 @@ export default async function Home() {
 						maxWidth: "28rem",
 					}}
 				>
-					CUP frente a USD, Zelle, USDT, EUR y MLC.
+					CUP frente a USD, Zelle, USDT, Binance, EUR y MLC.
 				</p>
 
 				{data ? (

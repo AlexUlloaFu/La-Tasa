@@ -6,7 +6,7 @@ type PriceChange = {
 };
 
 type CurrencyPair = {
-	currency: "USD" | "ZELLE" | "USDT" | "EUR" | "MLC";
+	currency: "USD" | "ZELLE" | "USDT" | "BINANCE" | "EUR" | "MLC";
 	buy: number;
 	sell: number;
 	change?: PriceChange | null;
@@ -39,13 +39,18 @@ const meta: Record<
 	},
 	ZELLE: {
 		label: "Zelle",
-		src: "/currencies/usd.png",
+		src: "/currencies/zelle.svg",
 		alt: "Zelle",
 	},
 	USDT: {
 		label: "Tether",
-		src: "/currencies/usd.png",
-		alt: "USDT",
+		src: "/currencies/usdt.svg",
+		alt: "USDT Tether",
+	},
+	BINANCE: {
+		label: "Binance",
+		src: "/currencies/binance.svg",
+		alt: "Binance",
 	},
 	EUR: {
 		label: "Euro",
@@ -107,10 +112,11 @@ export function RatesBoard({ data }: { data: RatesResponse }) {
 									alt={m.alt}
 									width={104}
 									height={72}
+									unoptimized={m.src.endsWith(".svg")}
 									style={{
 										width: "100%",
 										height: "100%",
-										objectFit: "cover",
+										objectFit: m.src.endsWith(".svg") ? "contain" : "cover",
 										display: "block",
 									}}
 								/>

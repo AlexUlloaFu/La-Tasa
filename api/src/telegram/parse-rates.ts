@@ -10,14 +10,15 @@ type Hit = {
   value: number;
 };
 
-// usdt antes que usd (si no, "usdt" matchea como usd)
+// usdt/binance antes que usd (si no, "usdt" matchea como usd)
 const CURRENCY_RE =
-  '(usdt|tether|zelle|usd|d[oó]lar(?:es)?|eur(?:o(?:s)?)?|€|mlc)';
+  '(usdt|tether|binance|bnb|zelle|usd|d[oó]lar(?:es)?|eur(?:o(?:s)?)?|€|mlc)';
 const NUM_RE = '(\\d{3,4}(?:[.,]\\d+)?)';
 
 function toCurrency(raw: string): Currency | null {
   const t = raw.toLowerCase().replace('ó', 'o');
   if (t === 'usdt' || t === 'tether') return 'USDT';
+  if (t === 'binance' || t === 'bnb') return 'BINANCE';
   if (t === 'zelle') return 'ZELLE';
   if (t === '€' || t.startsWith('eur')) return 'EUR';
   if (t === 'mlc') return 'MLC';
@@ -80,7 +81,14 @@ export function parseRatesFromTexts(texts: string[]): CurrencyPair[] | null {
     }
   }
 
-  const currencies: Currency[] = ['USD', 'ZELLE', 'USDT', 'EUR', 'MLC'];
+  const currencies: Currency[] = [
+    'USD',
+    'ZELLE',
+    'USDT',
+    'BINANCE',
+    'EUR',
+    'MLC',
+  ];
   const rates: CurrencyPair[] = [];
 
   for (const currency of currencies) {
