@@ -5,8 +5,9 @@ services:
       dockerfile: api/Dockerfile
     container_name: la-tasa-api
     restart: unless-stopped
+    # Host siempre 3124 (no usar ${PORT}: el .env lo pisaba y rompía nginx)
     ports:
-      - "${PORT:-3124}:3124"
+      - "3124:3124"
     env_file:
       - api/.env
     environment:
