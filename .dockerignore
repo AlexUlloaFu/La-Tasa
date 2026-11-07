@@ -1,0 +1,13 @@
+node_modules
+**/node_modules
+**/dist
+**/.next
+.git
+.env
+.env.local
+api/.env
+api/data
+*.log
+web
+README.md
+**/*.check.ts
