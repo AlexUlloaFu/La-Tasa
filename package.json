@@ -1,0 +1,10 @@
+{
+  "name": "el-toque-v2",
+  "private": true,
+  "workspaces": ["api", "web"],
+  "scripts": {
+    "dev:api": "npm run dev --workspace=api",
+    "dev:web": "npm run dev --workspace=web",
+    "check": "npm run check --workspace=api"
+  }
+}
