@@ -1,6 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { TelegramService } from '../telegram/telegram.service';
-import { toSnapshot, withChange } from './change';
+import { mergeRates, toSnapshot, withChange } from './change';
 import { loadSnapshot, saveSnapshot } from './snapshot-store';
 
 export type PriceChange = {
@@ -105,9 +105,13 @@ export class RatesService implements OnModuleInit {
     }
 
     const previous = await loadSnapshot();
-    const data = withChange(raw, previous);
+    const merged: RatesResponse = {
+      ...raw,
+      rates: mergeRates(raw.rates, previous),
+    };
+    const data = withChange(merged, previous);
     // Guardar precios crudos (sin change) para la próxima pasada.
-    await saveSnapshot(toSnapshot(raw));
+    await saveSnapshot(toSnapshot(merged));
     this.cache = { at: Date.now(), data };
     return data;
   }

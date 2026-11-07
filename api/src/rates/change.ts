@@ -1,3 +1,4 @@
+import { RATE_ORDER } from '../telegram/parse-rates';
 import type {
   CurrencyPair,
   RatesResponse,
@@ -22,6 +23,28 @@ export function toSnapshot(data: RatesResponse): Snapshot {
       : null,
     updatedAt: data.updatedAt,
   };
+}
+
+/** Completa el orden fijo; si falta una moneda, reusa la pasada anterior. */
+export function mergeRates(
+  live: CurrencyPair[],
+  previous: Snapshot | null,
+): CurrencyPair[] {
+  const liveBy = new Map(live.map((r) => [r.currency, r]));
+  const prevBy = new Map((previous?.rates ?? []).map((r) => [r.currency, r]));
+  const out: CurrencyPair[] = [];
+  for (const currency of RATE_ORDER) {
+    const cur = liveBy.get(currency);
+    if (cur) {
+      out.push(cur);
+      continue;
+    }
+    const prev = prevBy.get(currency);
+    if (prev) {
+      out.push({ currency, buy: prev.buy, sell: prev.sell });
+    }
+  }
+  return out;
 }
 
 export function withChange(

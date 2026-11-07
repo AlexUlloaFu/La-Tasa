@@ -2,6 +2,15 @@ import type { CurrencyPair } from '../rates/rates.service';
 
 export type Currency = CurrencyPair['currency'];
 
+export const RATE_ORDER: Currency[] = [
+  'USD',
+  'EUR',
+  'ZELLE',
+  'MLC',
+  'BINANCE',
+  'USDT',
+];
+
 type Side = 'buy' | 'sell';
 
 type Hit = {
@@ -10,7 +19,7 @@ type Hit = {
   value: number;
 };
 
-// usdt/binance antes que usd (si no, "usdt" matchea como usd)
+// usdt/binance antes que usd
 const CURRENCY_RE =
   '(usdt|tether|binance|bnb|zelle|usd|d[oó]lar(?:es)?|eur(?:o(?:s)?)?|€|mlc)';
 const NUM_RE = '(\\d{3,4}(?:[.,]\\d+)?)';
@@ -30,9 +39,11 @@ function toNumber(raw: string): number {
   return Math.round(Number(raw.replace(',', '.')));
 }
 
-function plausible(n: number): boolean {
-  // ponytail: rango duro CUP informal; afinar si el mercado se sale.
-  return n >= 100 && n <= 5000;
+/** Rangos CUP actuales; evita basura tipo USDT 653. */
+function plausible(currency: Currency, n: number): boolean {
+  if (currency === 'MLC') return n >= 400 && n <= 1500;
+  // USD / EUR / Zelle / USDT / Binance en banda de efectivo informal
+  return n >= 700 && n <= 2000;
 }
 
 /** Extrae compra/venta CUP por moneda desde texto libre de grupos. */
@@ -51,48 +62,54 @@ export function parseRatesFromTexts(texts: string[]): CurrencyPair[] | null {
       const currency = toCurrency(m[1]);
       const buy = toNumber(m[2]);
       const sell = toNumber(m[3]);
-      if (!currency || !plausible(buy) || !plausible(sell)) continue;
+      if (!currency || !plausible(currency, buy) || !plausible(currency, sell)) {
+        continue;
+      }
       hits.push({ currency, side: 'buy', value: Math.min(buy, sell) });
       hits.push({ currency, side: 'sell', value: Math.max(buy, sell) });
     }
 
     const buyRe = new RegExp(
-      `(?:compro|compra|busco|pago)\\s*${CURRENCY_RE}[^\\d]{0,20}${NUM_RE}`,
+      `(?:compro|compra|busco|pago)\\s*${CURRENCY_RE}[^\\d]{0,24}${NUM_RE}`,
       'gi',
     );
     for (const m of cleaned.matchAll(buyRe)) {
       const currency = toCurrency(m[1]);
       const value = toNumber(m[2]);
-      if (currency && plausible(value)) {
+      if (currency && plausible(currency, value)) {
         hits.push({ currency, side: 'buy', value });
       }
     }
 
     const sellRe = new RegExp(
-      `(?:vendo|venta|ofrezco)\\s*${CURRENCY_RE}[^\\d]{0,20}${NUM_RE}`,
+      `(?:vendo|venta|ofrezco)\\s*${CURRENCY_RE}[^\\d]{0,24}${NUM_RE}`,
       'gi',
     );
     for (const m of cleaned.matchAll(sellRe)) {
       const currency = toCurrency(m[1]);
       const value = toNumber(m[2]);
-      if (currency && plausible(value)) {
+      if (currency && plausible(currency, value)) {
         hits.push({ currency, side: 'sell', value });
       }
     }
+
+    // mención suelta: "zelle 920", "binance: 915" (sin compro/vendo)
+    const plainRe = new RegExp(
+      `(?:^|[^a-z])${CURRENCY_RE}\\s*[=:]\\s*${NUM_RE}`,
+      'gi',
+    );
+    for (const m of cleaned.matchAll(plainRe)) {
+      const currency = toCurrency(m[1]);
+      const value = toNumber(m[2]);
+      if (!currency || !plausible(currency, value)) continue;
+      hits.push({ currency, side: 'buy', value });
+      hits.push({ currency, side: 'sell', value });
+    }
   }
 
-  // Orden UI: USD, EUR, Zelle, MLC, USDT Binance, USDT Tether
-  const currencies: Currency[] = [
-    'USD',
-    'EUR',
-    'ZELLE',
-    'MLC',
-    'BINANCE',
-    'USDT',
-  ];
   const rates: CurrencyPair[] = [];
 
-  for (const currency of currencies) {
+  for (const currency of RATE_ORDER) {
     const buys = hits
       .filter((h) => h.currency === currency && h.side === 'buy')
       .map((h) => h.value);

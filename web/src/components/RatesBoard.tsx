@@ -86,20 +86,27 @@ function formatWhen(iso: string) {
 	}).format(new Date(iso));
 }
 
+const TICKER: Record<CurrencyPair["currency"], string> = {
+	USD: "USD",
+	EUR: "EUR",
+	ZELLE: "ZELLE",
+	MLC: "MLC",
+	BINANCE: "BINANCE",
+	USDT: "USDT",
+};
+
 export function RatesBoard({ data }: { data: RatesResponse }) {
-	const rates = [...data.rates].sort(
-		(a, b) => ORDER.indexOf(a.currency) - ORDER.indexOf(b.currency),
-	);
+	const byCurrency = new Map(data.rates.map((r) => [r.currency, r]));
 
 	return (
 		<div>
 			<ul style={{ listStyle: "none", display: "grid", gap: 0 }}>
-				{rates.map((rate, i) => {
-					const m = meta[rate.currency];
-					if (!m) return null;
+				{ORDER.map((currency, i) => {
+					const m = meta[currency];
+					const rate = byCurrency.get(currency);
 					return (
 						<li
-							key={rate.currency}
+							key={currency}
 							style={{
 								display: "grid",
 								gridTemplateColumns: "auto 1fr auto",
@@ -155,7 +162,7 @@ export function RatesBoard({ data }: { data: RatesResponse }) {
 										lineHeight: 1,
 									}}
 								>
-									{m.label}
+									{TICKER[currency]}
 								</div>
 							</div>
 
@@ -169,13 +176,13 @@ export function RatesBoard({ data }: { data: RatesResponse }) {
 							>
 								<RateCell
 									label="Compra"
-									value={formatCup(rate.buy)}
-									delta={rate.change?.buy}
+									value={rate ? formatCup(rate.buy) : "—"}
+									delta={rate?.change?.buy}
 								/>
 								<RateCell
 									label="Venta"
-									value={formatCup(rate.sell)}
-									delta={rate.change?.sell}
+									value={rate ? formatCup(rate.sell) : "—"}
+									delta={rate?.change?.sell}
 								/>
 							</div>
 						</li>
