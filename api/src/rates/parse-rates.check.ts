@@ -38,6 +38,16 @@ assert(mx.USD?.sell === 945, `USD cash: ${JSON.stringify(mx.USD)}`);
 assert(mx.USDT?.buy === 1120 && mx.USDT?.sell === 1120, `USDT: ${JSON.stringify(mx.USDT)}`);
 assert(mx.ZELLE?.sell === 1045, `ZELLE assume cash: ${JSON.stringify(mx.ZELLE)}`);
 
+// cruce usd↔usdt → USDT CUP = USD × ratio
+const cross = parseRatesFromTexts([
+  'Compro USD a 920',
+  'Vendo dolar 945',
+  'Tengo usd por usdt al 1.03',
+]);
+const cx = Object.fromEntries((cross ?? []).map((r) => [r.currency, r]));
+assert(cx.USD?.buy === 920 && cx.USD?.sell === 945, `cross USD: ${JSON.stringify(cx.USD)}`);
+assert(cx.USDT?.buy === 948 && cx.USDT?.sell === 973, `cross USDT: ${JSON.stringify(cx.USDT)}`);
+
 console.log('parse-rates.check ok');
 
 function assert(cond: boolean, msg: string) {

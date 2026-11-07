@@ -78,6 +78,38 @@ function pushHit(
   hits.push({ currency, side, value });
 }
 
+/** Ratio USD↔USDT ~1.0x (no es precio CUP). */
+function parseUsdUsdtRatios(texts: string[]): number[] {
+  const out: number[] = [];
+  const ratioNum = '(1[.,]\\d{1,3}|0[.,]\\d{2})';
+  const patterns = [
+    // "tengo usd por usdt al 1.03"
+    new RegExp(
+      `\\busd\\b.{0,24}(?:por|\\/|a|vs).{0,12}\\busdt\\b.{0,12}(?:al|a|=|:)?\\s*${ratioNum}`,
+      'gi',
+    ),
+    new RegExp(
+      `\\busdt\\b.{0,24}(?:por|\\/|a|vs).{0,12}\\busd\\b.{0,12}(?:al|a|=|:)?\\s*${ratioNum}`,
+      'gi',
+    ),
+    // "usd/usdt 1.03" · "usdt/usd = 1.02"
+    new RegExp(`\\busd\\s*[\\/:]\\s*usdt\\s*[=:]?\\s*${ratioNum}`, 'gi'),
+    new RegExp(`\\busdt\\s*[\\/:]\\s*usd\\s*[=:]?\\s*${ratioNum}`, 'gi'),
+  ];
+
+  for (const text of texts) {
+    const cleaned = fold(text.replace(/\s+/g, ' '));
+    for (const re of patterns) {
+      for (const m of cleaned.matchAll(re)) {
+        const r = Number(m[1].replace(',', '.'));
+        // ponytail: banda típica del cruce; fuera = basura
+        if (r >= 0.95 && r <= 1.25) out.push(r);
+      }
+    }
+  }
+  return out;
+}
+
 /** Extrae compra/venta CUP por moneda desde texto libre de grupos. */
 export function parseRatesFromTexts(texts: string[]): CurrencyPair[] | null {
   const hits: Hit[] = [];
@@ -142,6 +174,34 @@ export function parseRatesFromTexts(texts: string[]): CurrencyPair[] | null {
       const i = m.index ?? 0;
       pushHit(hits, cleaned, i, m[0].length, currency, 'buy', value);
       pushHit(hits, cleaned, i, m[0].length, currency, 'sell', value);
+    }
+  }
+
+  // "usd por usdt al 1.03" → USDT CUP = USD CUP × ratio
+  const usdBuys = hits
+    .filter((h) => h.currency === 'USD' && h.side === 'buy')
+    .map((h) => h.value);
+  const usdSells = hits
+    .filter((h) => h.currency === 'USD' && h.side === 'sell')
+    .map((h) => h.value);
+  if (usdBuys.length || usdSells.length) {
+    const usdBuy = median(usdBuys.length ? usdBuys : usdSells);
+    const usdSell = median(usdSells.length ? usdSells : usdBuys);
+    const ratio = (() => {
+      const rs = parseUsdUsdtRatios(texts);
+      return rs.length ? median(rs.map((n) => Math.round(n * 1000)) ) / 1000 : null;
+    })();
+    if (ratio != null) {
+      hits.push({
+        currency: 'USDT',
+        side: 'buy',
+        value: Math.round(usdBuy * ratio),
+      });
+      hits.push({
+        currency: 'USDT',
+        side: 'sell',
+        value: Math.round(usdSell * ratio),
+      });
     }
   }
 
