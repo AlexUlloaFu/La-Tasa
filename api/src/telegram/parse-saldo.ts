@@ -15,11 +15,15 @@ function plausiblePrice(amount: SaldoAmount, price: number): boolean {
   return price >= amount && price <= amount * 2.5;
 }
 
+function fold(s: string): string {
+  return s.normalize('NFD').replace(/\p{M}/gu, '');
+}
+
 /** Quita líneas de descuento por volumen ("Más de 3 recargas…"). */
 function stripBulkLines(text: string): string {
   return text
     .split(/\r?\n/)
-    .filter((line) => !/m[aá]\s*s\s+de\s+\d+\s+recargas?/i.test(line))
+    .filter((line) => !/mas\s+de\s+\d+\s+recargas?/i.test(fold(line)))
     .join('\n');
 }
 
@@ -34,12 +38,14 @@ export function parseSaldoMovilFromTexts(texts: string[]): SaldoTier[] | null {
     for (const amount of SALDO_TIERS) {
       const a = String(amount);
 
-      // Formato del grupo: "360 x 700"
+      // Formato del grupo: "360 x 700" — 1er precio del msg = unitario
       const xRe = new RegExp(`(?:saldo\\s*)?${a}\\s*[x×]\\s*(\\d{3,4})`, 'gi');
-      for (const m of text.matchAll(xRe)) {
-        const p = Number(m[1]);
-        if (!plausiblePrice(amount, p)) continue;
-        hits.push({ amount, side: 'sell', price: p });
+      const firstX = xRe.exec(text);
+      if (firstX) {
+        const p = Number(firstX[1]);
+        if (plausiblePrice(amount, p)) {
+          hits.push({ amount, side: 'sell', price: p });
+        }
       }
 
       const pairRe = new RegExp(

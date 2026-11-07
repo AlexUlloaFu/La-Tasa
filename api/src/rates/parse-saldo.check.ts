@@ -26,6 +26,15 @@ Acepto efectivo o transferencia`,
 const x360 = onlyX?.find((t) => t.amount === 360);
 assert(x360?.sell === 700 && x360?.buy === 700, `360 x 700 → ${JSON.stringify(x360)}`);
 
+// sin strip: solo el primer x del mensaje
+const firstOnly = parseSaldoMovilFromTexts([
+  '360 x 700\n360 x 600\n360 x 500',
+]);
+assert(
+  firstOnly?.find((t) => t.amount === 360)?.sell === 700,
+  `first-x → ${JSON.stringify(firstOnly)}`,
+);
+
 console.log('parse-saldo.check ok', { tiers, x360 });
 
 function assert(cond: boolean, msg: string) {
