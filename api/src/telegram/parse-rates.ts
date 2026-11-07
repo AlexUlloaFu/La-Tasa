@@ -46,6 +46,38 @@ function plausible(currency: Currency, n: number): boolean {
   return n >= 700 && n <= 2000;
 }
 
+function fold(s: string): string {
+  return s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+}
+
+/**
+ * Solo efectivo. Sin especificar → efectivo.
+ * ponytail: ventana local ~48 chars; mensajes mixtos cash+transf.
+ */
+function isTransferPrice(text: string, index: number, matchLen: number): boolean {
+  const from = Math.max(0, index - 48);
+  const to = Math.min(text.length, index + matchLen + 48);
+  const ctx = fold(text.slice(from, to));
+  const transfer = /transferenc|\btransf\b|\btransfer\b|\bxfer\b/.test(ctx);
+  if (!transfer) return false;
+  const cash = /efectivo|\bcash\b|en\s+mano/.test(ctx);
+  return !cash;
+}
+
+function pushHit(
+  hits: Hit[],
+  text: string,
+  index: number,
+  matchLen: number,
+  currency: Currency | null,
+  side: Side,
+  value: number,
+) {
+  if (!currency || !plausible(currency, value)) return;
+  if (isTransferPrice(text, index, matchLen)) return;
+  hits.push({ currency, side, value });
+}
+
 /** Extrae compra/venta CUP por moneda desde texto libre de grupos. */
 export function parseRatesFromTexts(texts: string[]): CurrencyPair[] | null {
   const hits: Hit[] = [];
@@ -62,11 +94,9 @@ export function parseRatesFromTexts(texts: string[]): CurrencyPair[] | null {
       const currency = toCurrency(m[1]);
       const buy = toNumber(m[2]);
       const sell = toNumber(m[3]);
-      if (!currency || !plausible(currency, buy) || !plausible(currency, sell)) {
-        continue;
-      }
-      hits.push({ currency, side: 'buy', value: Math.min(buy, sell) });
-      hits.push({ currency, side: 'sell', value: Math.max(buy, sell) });
+      const i = m.index ?? 0;
+      pushHit(hits, cleaned, i, m[0].length, currency, 'buy', Math.min(buy, sell));
+      pushHit(hits, cleaned, i, m[0].length, currency, 'sell', Math.max(buy, sell));
     }
 
     const buyRe = new RegExp(
@@ -74,11 +104,15 @@ export function parseRatesFromTexts(texts: string[]): CurrencyPair[] | null {
       'gi',
     );
     for (const m of cleaned.matchAll(buyRe)) {
-      const currency = toCurrency(m[1]);
-      const value = toNumber(m[2]);
-      if (currency && plausible(currency, value)) {
-        hits.push({ currency, side: 'buy', value });
-      }
+      pushHit(
+        hits,
+        cleaned,
+        m.index ?? 0,
+        m[0].length,
+        toCurrency(m[1]),
+        'buy',
+        toNumber(m[2]),
+      );
     }
 
     const sellRe = new RegExp(
@@ -86,11 +120,15 @@ export function parseRatesFromTexts(texts: string[]): CurrencyPair[] | null {
       'gi',
     );
     for (const m of cleaned.matchAll(sellRe)) {
-      const currency = toCurrency(m[1]);
-      const value = toNumber(m[2]);
-      if (currency && plausible(currency, value)) {
-        hits.push({ currency, side: 'sell', value });
-      }
+      pushHit(
+        hits,
+        cleaned,
+        m.index ?? 0,
+        m[0].length,
+        toCurrency(m[1]),
+        'sell',
+        toNumber(m[2]),
+      );
     }
 
     // mención suelta: "zelle 920", "binance: 915" (sin compro/vendo)
@@ -99,11 +137,11 @@ export function parseRatesFromTexts(texts: string[]): CurrencyPair[] | null {
       'gi',
     );
     for (const m of cleaned.matchAll(plainRe)) {
-      const currency = toCurrency(m[1]);
       const value = toNumber(m[2]);
-      if (!currency || !plausible(currency, value)) continue;
-      hits.push({ currency, side: 'buy', value });
-      hits.push({ currency, side: 'sell', value });
+      const currency = toCurrency(m[1]);
+      const i = m.index ?? 0;
+      pushHit(hits, cleaned, i, m[0].length, currency, 'buy', value);
+      pushHit(hits, cleaned, i, m[0].length, currency, 'sell', value);
     }
   }
 

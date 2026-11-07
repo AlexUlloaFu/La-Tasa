@@ -25,6 +25,19 @@ assert(by.BINANCE?.buy === 912 && by.BINANCE?.sell === 928, `BINANCE mal: ${JSON
 assert(by.EUR?.buy === 1003 && by.EUR?.sell === 1020, `EUR mal: ${JSON.stringify(by.EUR)}`);
 assert(by.MLC?.buy === 650 && by.MLC?.sell === 670, `MLC mal: ${JSON.stringify(by.MLC)}`);
 
+// transferencia se ignora; sin especificar = efectivo
+const mixed = parseRatesFromTexts([
+  'Vendo USD transferencia 880',
+  'Vendo USD efectivo 945',
+  'USDT transf 900 / 910',
+  'Vendo Zelle 1045',
+  'Compro USDT a 1120',
+]);
+const mx = Object.fromEntries((mixed ?? []).map((r) => [r.currency, r]));
+assert(mx.USD?.sell === 945, `USD cash: ${JSON.stringify(mx.USD)}`);
+assert(mx.USDT?.buy === 1120 && mx.USDT?.sell === 1120, `USDT: ${JSON.stringify(mx.USDT)}`);
+assert(mx.ZELLE?.sell === 1045, `ZELLE assume cash: ${JSON.stringify(mx.ZELLE)}`);
+
 console.log('parse-rates.check ok');
 
 function assert(cond: boolean, msg: string) {
