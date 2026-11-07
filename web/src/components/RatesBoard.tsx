@@ -393,9 +393,9 @@ function DeltaBadge({ delta }: { delta?: number | null }) {
 	const up = delta > 0;
 	const color = up ? "var(--up)" : "var(--down)";
 	const arrow = up ? "▲" : "▼";
-	const amount = new Intl.NumberFormat("es-CU", {
+	const signed = `${up ? "+" : "−"}${new Intl.NumberFormat("es-CU", {
 		maximumFractionDigits: 0,
-	}).format(Math.abs(delta));
+	}).format(Math.abs(delta))}`;
 
 	return (
 		<span
@@ -415,7 +415,7 @@ function DeltaBadge({ delta }: { delta?: number | null }) {
 			}
 		>
 			<span aria-hidden>{arrow}</span>
-			<span>{amount}</span>
+			<span>{signed}</span>
 		</span>
 	);
 }
