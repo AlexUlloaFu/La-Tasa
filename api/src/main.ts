@@ -12,7 +12,7 @@ async function bootstrap() {
     .map((s) => s.trim())
     .filter(Boolean);
   app.enableCors({ origin: origins });
-  const port = Number(process.env.PORT) || 3001;
+  const port = Number(process.env.PORT) || 3124;
   await app.listen(port);
 }
 bootstrap();

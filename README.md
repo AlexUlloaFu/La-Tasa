@@ -9,17 +9,18 @@ Las tasas salen de un **cliente MTProto** (cuenta normal de Telegram via [telepr
 ```bash
 npm install
 cp api/.env.example api/.env
-npm run dev:api   # Nest :3001
+npm run dev:api   # Nest :3124
 npm run dev:web   # Next :3000
 ```
 
-Abre http://localhost:3000 · API: `GET http://localhost:3001/rates`
+Abre http://localhost:3000 · API: `GET http://localhost:3124/rates`
 
 ## Front en Vercel + API en VPS
 
 ```
-Usuario → Vercel (Next / web) → VPS Nest (:3001 /rates)
+Usuario → Vercel (Next / web) → VPS Nest (:3124 /rates)
 ```
+
 
 ### 1) Backend en el VPS (Docker)
 
@@ -30,6 +31,7 @@ nano api/.env   # TELEGRAM_*, CORS_ORIGIN=https://tu-app.vercel.app
 ```
 
 Sesión Telegram: copia `TELEGRAM_SESSION` desde tu PC, o genera en el VPS:
+
 ```bash
 npm install && npm run telegram:login --workspace=api
 # pega TELEGRAM_SESSION en api/.env
@@ -37,11 +39,12 @@ npm install && npm run telegram:login --workspace=api
 
 ```bash
 docker compose up -d --build
-curl http://127.0.0.1:3001/rates
+curl http://127.0.0.1:3124/rates
 docker compose logs -f api
 ```
 
-Expón con Nginx + HTTPS → `https://api.tudominio.com` → `127.0.0.1:3001`.
+Expón con Nginx + HTTPS → `https://api.tudominio.com` → `127.0.0.1:3124`.
+
 
 ### 2) Frontend en Vercel
 
@@ -57,16 +60,19 @@ Local:
 
 ```env
 # web/.env.local
-API_URL=http://localhost:3001
+API_URL=http://localhost:3124
 ```
+
+En Vercel (prod): `API_URL=http://108.175.5.198:3124`
 
 ## Docker (API)
 
 ```bash
-docker compose up -d --build   # http://VPS:3001/rates
+docker compose up -d --build   # http://VPS:3124/rates
 docker compose logs -f api
 docker compose pull && docker compose up -d --build   # tras git pull
 ```
+
 
 El worker (00:00 / 12:00 / 18:00 Havana) vive en el mismo contenedor.
 

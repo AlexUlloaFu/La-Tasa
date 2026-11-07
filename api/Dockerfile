@@ -23,5 +23,5 @@ COPY --from=build /app/api/dist ./api/dist
 WORKDIR /app/api
 RUN mkdir -p data
 
-EXPOSE 3001
+EXPOSE 3124
 CMD ["node", "dist/main.js"]

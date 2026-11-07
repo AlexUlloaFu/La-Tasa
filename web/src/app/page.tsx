@@ -22,7 +22,7 @@ type RatesResponse = {
 };
 
 async function getRates(): Promise<RatesResponse | null> {
-	const base = process.env.API_URL ?? "http://localhost:3001";
+	const base = process.env.API_URL ?? "http://localhost:3124";
 	try {
 		const res = await fetch(`${base.replace(/\/$/, "")}/rates`, {
 			cache: "no-store",
@@ -89,7 +89,7 @@ export default async function Home() {
 					<RatesBoard data={data} />
 				) : (
 					<p style={{ color: "var(--accent)" }}>
-						No se pudo cargar la API. Arranca el backend en el puerto 3001.
+						No se pudo cargar la API. Arranca el backend en el puerto 3124.
 					</p>
 				)}
 			</section>
