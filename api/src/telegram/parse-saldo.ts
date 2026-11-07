@@ -11,27 +11,42 @@ type Side = 'buy' | 'sell';
 type Hit = { amount: SaldoAmount; side: Side; price: number };
 
 function plausiblePrice(amount: SaldoAmount, price: number): boolean {
-  // ponytail: precio informal suele estar entre nominal y ~2×; afinar con datos reales.
-  return price >= amount && price <= amount * 2.2;
+  // ponytail: 360 x 700 es común; techo ~2.5× nominal.
+  return price >= amount && price <= amount * 2.5;
+}
+
+/** Quita líneas de descuento por volumen ("Más de 3 recargas…"). */
+function stripBulkLines(text: string): string {
+  return text
+    .split(/\r?\n/)
+    .filter((line) => !/m[aá]\s*s\s+de\s+\d+\s+recargas?/i.test(line))
+    .join('\n');
 }
 
 /** Mediana compra/venta CUP por tramo 120 / 240 / 360. */
 export function parseSaldoMovilFromTexts(texts: string[]): SaldoTier[] | null {
   const hits: Hit[] = [];
 
-  for (const text of texts) {
-    const cleaned = text.replace(/\s+/g, ' ').trim();
-    if (!cleaned) continue;
+  for (const raw of texts) {
+    const text = stripBulkLines(raw.replace(/[^\S\n]+/g, ' ').trim());
+    if (!text) continue;
 
     for (const amount of SALDO_TIERS) {
       const a = String(amount);
 
-      // 120 145/150  |  120: 145-150  |  120 = 145 / 150
+      // Formato del grupo: "360 x 700"
+      const xRe = new RegExp(`(?:saldo\\s*)?${a}\\s*[x×]\\s*(\\d{3,4})`, 'gi');
+      for (const m of text.matchAll(xRe)) {
+        const p = Number(m[1]);
+        if (!plausiblePrice(amount, p)) continue;
+        hits.push({ amount, side: 'sell', price: p });
+      }
+
       const pairRe = new RegExp(
-        `(?:saldo\\s*)?${a}\\s*(?:cup\\s*)?[=:\\-]?\\s*(\\d{3})\\s*[\\/\\-]\\s*(\\d{3})`,
+        `(?:saldo\\s*)?${a}\\s*(?:cup\\s*)?[=:\\-]?\\s*(\\d{3,4})\\s*[\\/\\-]\\s*(\\d{3,4})`,
         'gi',
       );
-      for (const m of cleaned.matchAll(pairRe)) {
+      for (const m of text.matchAll(pairRe)) {
         const p1 = Number(m[1]);
         const p2 = Number(m[2]);
         if (!plausiblePrice(amount, p1) || !plausiblePrice(amount, p2)) continue;
@@ -39,38 +54,32 @@ export function parseSaldoMovilFromTexts(texts: string[]): SaldoTier[] | null {
         hits.push({ amount, side: 'sell', price: Math.max(p1, p2) });
       }
 
-      // compro/vendo saldo 120 a 145
       const buyRe = new RegExp(
-        `(?:compro|compra|busco|pago)\\s+(?:saldo\\s*)?(?:de\\s*)?${a}\\s*(?:cup\\s*)?(?:en|a|por|=|:)?\\s*(\\d{3})`,
+        `(?:compro|compra|busco|pago)\\s+(?:saldo\\s*)?(?:de\\s*)?${a}\\s*(?:cup\\s*)?(?:en|a|por|=|:)?\\s*(\\d{3,4})`,
         'gi',
       );
-      for (const m of cleaned.matchAll(buyRe)) {
+      for (const m of text.matchAll(buyRe)) {
         const p = Number(m[1]);
-        if (plausiblePrice(amount, p)) {
-          hits.push({ amount, side: 'buy', price: p });
-        }
+        if (plausiblePrice(amount, p)) hits.push({ amount, side: 'buy', price: p });
       }
 
       const sellRe = new RegExp(
-        `(?:vendo|venta|ofrezco)\\s+(?:saldo\\s*)?(?:de\\s*)?${a}\\s*(?:cup\\s*)?(?:en|a|por|=|:)?\\s*(\\d{3})`,
+        `(?:vendo|venta|ofrezco)\\s+(?:saldo\\s*)?(?:de\\s*)?${a}\\s*(?:cup\\s*)?(?:en|a|por|=|:)?\\s*(\\d{3,4})`,
         'gi',
       );
-      for (const m of cleaned.matchAll(sellRe)) {
+      for (const m of text.matchAll(sellRe)) {
         const p = Number(m[1]);
-        if (plausiblePrice(amount, p)) {
-          hits.push({ amount, side: 'sell', price: p });
-        }
+        if (plausiblePrice(amount, p)) hits.push({ amount, side: 'sell', price: p });
       }
 
-      // saldo 120 - 145  |  120 - 145 (con mención saldo cerca o solo tramo conocido)
       const dashRe = new RegExp(
-        `(?:saldo\\s*)?${a}\\s*[\\-–—]\\s*(\\d{3})(?!\\d)`,
+        `(?:saldo\\s*)?${a}\\s*[\\-–—]\\s*(\\d{3,4})(?!\\d)`,
         'gi',
       );
-      for (const m of cleaned.matchAll(dashRe)) {
+      for (const m of text.matchAll(dashRe)) {
         const p = Number(m[1]);
         if (!plausiblePrice(amount, p)) continue;
-        if (!/saldo/i.test(cleaned) && p === amount) continue;
+        if (!/saldo/i.test(text) && p === amount) continue;
         hits.push({ amount, side: 'buy', price: p });
         hits.push({ amount, side: 'sell', price: p });
       }
