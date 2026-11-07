@@ -81,13 +81,14 @@ export function parseRatesFromTexts(texts: string[]): CurrencyPair[] | null {
     }
   }
 
+  // Orden de tabla: USD, EUR, MLC, Binance, Tether (+ Zelle al final)
   const currencies: Currency[] = [
     'USD',
-    'ZELLE',
-    'USDT',
-    'BINANCE',
     'EUR',
     'MLC',
+    'BINANCE',
+    'USDT',
+    'ZELLE',
   ];
   const rates: CurrencyPair[] = [];
 

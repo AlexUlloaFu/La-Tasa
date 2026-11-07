@@ -35,11 +35,11 @@ const FALLBACK: RatesResponse = {
   base: 'CUP',
   rates: [
     { currency: 'USD', buy: 925, sell: 940 },
-    { currency: 'ZELLE', buy: 910, sell: 925 },
-    { currency: 'USDT', buy: 920, sell: 935 },
-    { currency: 'BINANCE', buy: 915, sell: 930 },
     { currency: 'EUR', buy: 1005, sell: 1025 },
     { currency: 'MLC', buy: 645, sell: 665 },
+    { currency: 'BINANCE', buy: 915, sell: 930 },
+    { currency: 'USDT', buy: 920, sell: 935 },
+    { currency: 'ZELLE', buy: 910, sell: 925 },
   ],
   saldoMovil: [
     { amount: 120, buy: 145, sell: 155 },

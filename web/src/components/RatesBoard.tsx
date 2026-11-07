@@ -37,21 +37,6 @@ const meta: Record<
 		src: "/currencies/usd.png",
 		alt: "Bandera de Estados Unidos",
 	},
-	ZELLE: {
-		label: "Zelle",
-		src: "/currencies/zelle.svg",
-		alt: "Zelle",
-	},
-	USDT: {
-		label: "Tether",
-		src: "/currencies/usdt.svg",
-		alt: "USDT Tether",
-	},
-	BINANCE: {
-		label: "Binance",
-		src: "/currencies/binance.svg",
-		alt: "Binance",
-	},
 	EUR: {
 		label: "Euro",
 		src: "/currencies/eur.png",
@@ -61,6 +46,21 @@ const meta: Record<
 		label: "Tarjeta",
 		src: "/currencies/mlc.jpg",
 		alt: "Tarjeta MLC",
+	},
+	BINANCE: {
+		label: "USDT Binance",
+		src: "/currencies/binance.svg",
+		alt: "USDT Binance",
+	},
+	USDT: {
+		label: "USDT Tether",
+		src: "/currencies/usdt.svg",
+		alt: "USDT Tether",
+	},
+	ZELLE: {
+		label: "Zelle",
+		src: "/currencies/zelle.svg",
+		alt: "Zelle",
 	},
 };
 
@@ -77,11 +77,24 @@ function formatWhen(iso: string) {
 	}).format(new Date(iso));
 }
 
+const RATE_ORDER: CurrencyPair["currency"][] = [
+	"USD",
+	"EUR",
+	"MLC",
+	"BINANCE",
+	"USDT",
+	"ZELLE",
+];
+
 export function RatesBoard({ data }: { data: RatesResponse }) {
+	const rates = [...data.rates].sort(
+		(a, b) => RATE_ORDER.indexOf(a.currency) - RATE_ORDER.indexOf(b.currency),
+	);
+
 	return (
 		<div>
 			<ul style={{ listStyle: "none", display: "grid", gap: 0 }}>
-				{data.rates.map((rate, i) => {
+				{rates.map((rate, i) => {
 					const m = meta[rate.currency];
 					return (
 						<li
@@ -125,23 +138,12 @@ export function RatesBoard({ data }: { data: RatesResponse }) {
 							<div style={{ minWidth: 0 }}>
 								<div
 									style={{
-										fontSize: "0.72rem",
-										letterSpacing: "0.06em",
-										textTransform: "uppercase",
-										color: "var(--muted)",
-										marginBottom: "0.15rem",
+										fontFamily: "var(--font-display), serif",
+										fontSize: "1.35rem",
+										lineHeight: 1.1,
 									}}
 								>
 									{m.label}
-								</div>
-								<div
-									style={{
-										fontFamily: "var(--font-display), serif",
-										fontSize: "1.35rem",
-										lineHeight: 1,
-									}}
-								>
-									{rate.currency}
 								</div>
 							</div>
 
