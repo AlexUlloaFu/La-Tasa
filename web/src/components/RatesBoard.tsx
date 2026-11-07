@@ -81,6 +81,7 @@ function formatCup(n: number) {
 
 function formatWhen(iso: string) {
 	return new Intl.DateTimeFormat("es-CU", {
+		timeZone: "America/Havana",
 		dateStyle: "medium",
 		timeStyle: "short",
 	}).format(new Date(iso));
