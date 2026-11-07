@@ -21,7 +21,6 @@ Abre http://localhost:3000 · API: `GET http://localhost:3124/rates`
 Usuario → Vercel (Next / web) → VPS Nest (:3124 /rates)
 ```
 
-
 ### 1) Backend en el VPS (Docker)
 
 ```bash
@@ -44,7 +43,6 @@ docker compose logs -f api
 ```
 
 Expón con Nginx + HTTPS → `https://api.tudominio.com` → `127.0.0.1:3124`.
-
 
 ### 2) Frontend en Vercel
 
@@ -72,7 +70,6 @@ docker compose up -d --build   # http://VPS:3124/rates
 docker compose logs -f api
 docker compose pull && docker compose up -d --build   # tras git pull
 ```
-
 
 El worker (00:00 / 12:00 / 18:00 Havana) vive en el mismo contenedor.
 
