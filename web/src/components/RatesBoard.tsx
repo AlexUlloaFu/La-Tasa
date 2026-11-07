@@ -28,6 +28,15 @@ type RatesResponse = {
 	provisional: boolean;
 };
 
+const ORDER: CurrencyPair["currency"][] = [
+	"USD",
+	"EUR",
+	"ZELLE",
+	"MLC",
+	"BINANCE",
+	"USDT",
+];
+
 const meta: Record<
 	CurrencyPair["currency"],
 	{ label: string; src: string; alt: string }
@@ -41,6 +50,11 @@ const meta: Record<
 		label: "Euro",
 		src: "/currencies/eur.png",
 		alt: "Bandera de la Unión Europea",
+	},
+	ZELLE: {
+		label: "Zelle",
+		src: "/currencies/zelle.svg",
+		alt: "Zelle",
 	},
 	MLC: {
 		label: "Tarjeta",
@@ -57,11 +71,6 @@ const meta: Record<
 		src: "/currencies/usdt.svg",
 		alt: "USDT Tether",
 	},
-	ZELLE: {
-		label: "Zelle",
-		src: "/currencies/zelle.svg",
-		alt: "Zelle",
-	},
 };
 
 function formatCup(n: number) {
@@ -77,18 +86,9 @@ function formatWhen(iso: string) {
 	}).format(new Date(iso));
 }
 
-const RATE_ORDER: CurrencyPair["currency"][] = [
-	"USD",
-	"EUR",
-	"MLC",
-	"BINANCE",
-	"USDT",
-	"ZELLE",
-];
-
 export function RatesBoard({ data }: { data: RatesResponse }) {
 	const rates = [...data.rates].sort(
-		(a, b) => RATE_ORDER.indexOf(a.currency) - RATE_ORDER.indexOf(b.currency),
+		(a, b) => ORDER.indexOf(a.currency) - ORDER.indexOf(b.currency),
 	);
 
 	return (
@@ -96,6 +96,7 @@ export function RatesBoard({ data }: { data: RatesResponse }) {
 			<ul style={{ listStyle: "none", display: "grid", gap: 0 }}>
 				{rates.map((rate, i) => {
 					const m = meta[rate.currency];
+					if (!m) return null;
 					return (
 						<li
 							key={rate.currency}
@@ -138,9 +139,20 @@ export function RatesBoard({ data }: { data: RatesResponse }) {
 							<div style={{ minWidth: 0 }}>
 								<div
 									style={{
+										fontSize: "0.72rem",
+										letterSpacing: "0.06em",
+										textTransform: "uppercase",
+										color: "var(--muted)",
+										marginBottom: "0.15rem",
+									}}
+								>
+									{m.label}
+								</div>
+								<div
+									style={{
 										fontFamily: "var(--font-display), serif",
 										fontSize: "1.35rem",
-										lineHeight: 1.1,
+										lineHeight: 1,
 									}}
 								>
 									{m.label}

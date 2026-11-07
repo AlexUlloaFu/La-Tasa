@@ -82,7 +82,7 @@ export default async function Home() {
 						maxWidth: "28rem",
 					}}
 				>
-					CUP frente a USD, Zelle, USDT, Binance, EUR y MLC.
+					CUP frente a USD, Euro, Zelle, MLC, USDT Binance y USDT Tether.
 				</p>
 
 				{data ? (
