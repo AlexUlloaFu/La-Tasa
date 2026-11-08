@@ -6,7 +6,8 @@ import {
 } from '@nestjs/common';
 import type { TelegramClient } from 'teleproto';
 import { createClient, readTelegramEnv, type TelegramEnv } from './client';
-import { parseRatesFromTexts } from './parse-rates';
+import { mergeRateLists, parseRatesFromTexts } from './parse-rates';
+import { parseRatesWithLlm } from './parse-rates-llm';
 import { parseSaldoMovilFromTexts } from './parse-saldo';
 import type { RatesResponse } from '../rates/rates.service';
 
@@ -123,7 +124,24 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
       `Telegram: ${kept} msgs útiles / ${scanned} escaneados → mediana compra/venta`,
     );
 
-    const rates = parseRatesFromTexts(texts) ?? [];
+    const regexRates = parseRatesFromTexts(texts);
+    let llmRates = null as ReturnType<typeof parseRatesFromTexts>;
+    if (process.env.GROQ_API_KEY?.trim()) {
+      try {
+        llmRates = await parseRatesWithLlm(texts);
+        this.log.log(
+          llmRates?.length
+            ? `Groq LLM: ${llmRates.map((r) => `${r.currency} ${r.buy}/${r.sell}`).join(' · ')}`
+            : 'Groq LLM: sin tasas',
+        );
+      } catch (err) {
+        this.log.warn(
+          `Groq LLM falló → solo regex: ${err instanceof Error ? err.message : err}`,
+        );
+      }
+    }
+    // LLM pisa regex por moneda cuando responde; regex cubre el resto / sin key.
+    const rates = mergeRateLists(llmRates, regexRates) ?? [];
     const saldoMovil = parseSaldoMovilFromTexts(texts);
     if (!rates.length && !saldoMovil) {
       this.log.warn('Telegram: no se pudieron parsear tasas en la ventana');

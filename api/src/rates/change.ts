@@ -25,26 +25,13 @@ export function toSnapshot(data: RatesResponse): Snapshot {
   };
 }
 
-/** Completa el orden fijo; si falta una moneda, reusa la pasada anterior. */
+/** Orden fijo. Solo tasas live — previous no rellena huecos (evita basura vieja). */
 export function mergeRates(
   live: CurrencyPair[],
-  previous: Snapshot | null,
+  _previous: Snapshot | null,
 ): CurrencyPair[] {
   const liveBy = new Map(live.map((r) => [r.currency, r]));
-  const prevBy = new Map((previous?.rates ?? []).map((r) => [r.currency, r]));
-  const out: CurrencyPair[] = [];
-  for (const currency of RATE_ORDER) {
-    const cur = liveBy.get(currency);
-    if (cur) {
-      out.push(cur);
-      continue;
-    }
-    const prev = prevBy.get(currency);
-    if (prev) {
-      out.push({ currency, buy: prev.buy, sell: prev.sell });
-    }
-  }
-  return out;
+  return RATE_ORDER.filter((c) => liveBy.has(c)).map((c) => liveBy.get(c)!);
 }
 
 export function withChange(

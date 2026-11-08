@@ -59,9 +59,8 @@ const FALLBACK: RatesResponse = {
 @Injectable()
 export class RatesService implements OnModuleInit {
   private readonly log = new Logger(RatesService.name);
-  // ponytail: cache proceso 5min; Redis/job si hay varias instancias.
-  private cache: { at: number; data: RatesResponse } | null = null;
-  private readonly ttlMs = 5 * 60 * 1000;
+  // ponytail: cache hasta el próximo scan (0/12/18 Havana); no refrescar por request.
+  private cache: RatesResponse | null = null;
 
   constructor(private readonly telegram: TelegramService) {}
 
@@ -72,14 +71,15 @@ export class RatesService implements OnModuleInit {
     this.logRates('arranque', data);
   }
 
+  /** Sirve cache; Telegram solo en arranque + worker 00/12/18 Havana. */
   async getRates(): Promise<RatesResponse> {
-    if (this.cache && Date.now() - this.cache.at < this.ttlMs) {
-      return this.cache.data;
-    }
+    if (this.cache) return this.cache;
+    await this.telegram.whenReady();
+    if (this.cache) return this.cache;
     return this.refreshFromTelegram();
   }
 
-  /** Fuerza escaneo (arranque / worker), ignora TTL del cache. */
+  /** Escaneo forzado (arranque / worker 3×/día). */
   async scanNow(label = 'manual'): Promise<RatesResponse> {
     await this.telegram.whenReady();
     const data = await this.refreshFromTelegram();
@@ -105,6 +105,7 @@ export class RatesService implements OnModuleInit {
     }
 
     const previous = await loadSnapshot();
+    // live manda; previous solo para Δ (no resucitar BINANCE/USDT inflados viejos)
     const merged: RatesResponse = {
       ...raw,
       rates: mergeRates(raw.rates, previous),
@@ -112,7 +113,7 @@ export class RatesService implements OnModuleInit {
     const data = withChange(merged, previous);
     // Guardar precios crudos (sin change) para la próxima pasada.
     await saveSnapshot(toSnapshot(merged));
-    this.cache = { at: Date.now(), data };
+    this.cache = data;
     return data;
   }
 
