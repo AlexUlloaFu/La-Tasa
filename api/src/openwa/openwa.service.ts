@@ -72,7 +72,7 @@ export class OpenWaService {
       return texts.length ? { texts, sources } : null;
     } catch (err) {
       this.log.warn(
-        `OpenWA API no disponible: ${err instanceof Error ? err.message : err}`,
+        `OpenWA API no disponible: ${describeError(err)}. Comprueba que OPENWA_API_URL sea alcanzable desde la red Docker de La Tasa.`,
       );
       return null;
     }
@@ -119,4 +119,16 @@ export class OpenWaService {
 
 function normalize(value: string): string {
   return value.normalize('NFD').replace(/\p{M}/gu, '').trim().toLowerCase();
+}
+
+function describeError(err: unknown): string {
+  if (!(err instanceof Error)) return String(err);
+  const cause = (err as Error & { cause?: unknown }).cause;
+  if (typeof cause !== 'object' || cause === null) return err.message;
+
+  const details = cause as { code?: unknown; message?: unknown };
+  const code = typeof details.code === 'string' ? details.code : '';
+  const message =
+    typeof details.message === 'string' ? details.message : '';
+  return [err.message, code, message].filter(Boolean).join(' — ');
 }

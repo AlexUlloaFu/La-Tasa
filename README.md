@@ -29,6 +29,11 @@ cp api/.env.example api/.env
 nano api/.env   # TELEGRAM_*, OPENWA_*, CORS_ORIGIN=https://tu-app.vercel.app
 ```
 
+Para compartir OpenWA entre distintos proyectos Docker, Havana Shopping crea la red externa
+`openwa-shared`; La Tasa se conecta a esa red sin depender de las redes privadas de la tienda.
+Antes de levantar La Tasa, asegúrate de haber desplegado OpenWA y creado esa red desde el deploy
+de Havana Shopping.
+
 Sesión Telegram: copia `TELEGRAM_SESSION` desde tu PC, o genera en el VPS:
 
 ```bash
@@ -110,4 +115,4 @@ OPENWA_SOURCE=["120363...@g.us"]
 OPENWA_DAYS=3
 ```
 
-`OPENWA_SOURCE` acepta JID de grupo (`@g.us`) o el nombre exacto del grupo (se resuelve desde OpenWA; si hay nombres repetidos, usa el JID). Asegúrate de que la sesión esté `ready` y que OpenWA pueda acceder al historial de mensajes. Se leen hasta 200 mensajes por grupo y se filtran por `OPENWA_DAYS`. Una lista vacía desactiva WhatsApp sin afectar Telegram. Si OpenWA corre fuera de la red Docker de La Tasa, sustituye la URL por una dirección alcanzable desde la API.
+`OPENWA_SOURCE` acepta JID de grupo (`@g.us`) o el nombre exacto del grupo (se resuelve desde OpenWA; si hay nombres repetidos, usa el JID). Asegúrate de que la sesión esté `ready` y que OpenWA pueda acceder al historial de mensajes. Se leen hasta 200 mensajes por grupo y se filtran por `OPENWA_DAYS`. Una lista vacía desactiva WhatsApp sin afectar Telegram. El API y OpenWA deben compartir la red externa `openwa-shared`; usa `http://openwa:2785/api` como URL dentro de Docker.
