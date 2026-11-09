@@ -6,7 +6,7 @@
     "dev": "nest start --watch",
     "build": "nest build",
     "start": "node dist/main.js",
-    "check": "node --import tsx src/rates/parse-rates.check.ts && node --import tsx src/rates/parse-saldo.check.ts && node --import tsx src/rates/change.check.ts && node --import tsx src/rates/schedule.check.ts",
+    "check": "node --import tsx src/rates/parse-rates.check.ts && node --import tsx src/rates/parse-saldo.check.ts && node --import tsx src/rates/change.check.ts && node --import tsx src/rates/schedule.check.ts && node --import tsx src/openwa/openwa.check.ts",
     "telegram:login": "node --import tsx src/telegram/login.ts"
   },
 

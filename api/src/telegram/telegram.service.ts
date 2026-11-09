@@ -6,10 +6,7 @@ import {
 } from '@nestjs/common';
 import type { TelegramClient } from 'teleproto';
 import { createClient, readTelegramEnv, type TelegramEnv } from './client';
-import { mergeRateLists, parseRatesFromTexts } from './parse-rates';
-import { parseRatesWithLlm } from './parse-rates-llm';
-import { parseSaldoMovilFromTexts } from './parse-saldo';
-import type { RatesResponse } from '../rates/rates.service';
+import type { RateMessages } from '../rates/rates.service';
 
 @Injectable()
 export class TelegramService implements OnModuleInit, OnModuleDestroy {
@@ -85,7 +82,7 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  async fetchRates(): Promise<RatesResponse | null> {
+  async fetchMessages(): Promise<RateMessages | null> {
     if (!this.client || !this.env || !this.ready) return null;
 
     const cutoff =
@@ -121,45 +118,9 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     }
 
     this.log.log(
-      `Telegram: ${kept} msgs útiles / ${scanned} escaneados → mediana compra/venta`,
+      `Telegram: ${kept} msgs útiles / ${scanned} escaneados`,
     );
 
-    const regexRates = parseRatesFromTexts(texts);
-    let llmRates = null as ReturnType<typeof parseRatesFromTexts>;
-    if (process.env.GROQ_API_KEY?.trim()) {
-      try {
-        llmRates = await parseRatesWithLlm(texts);
-        this.log.log(
-          llmRates?.length
-            ? `Groq LLM: ${llmRates.map((r) => `${r.currency} ${r.buy}/${r.sell}`).join(' · ')}`
-            : 'Groq LLM: sin tasas',
-        );
-      } catch (err) {
-        this.log.warn(
-          `Groq LLM falló → solo regex: ${err instanceof Error ? err.message : err}`,
-        );
-      }
-    }
-    // LLM pisa regex por moneda cuando responde; regex cubre el resto / sin key.
-    const rates = mergeRateLists(llmRates, regexRates) ?? [];
-    const saldoMovil = parseSaldoMovilFromTexts(texts);
-    if (!rates.length && !saldoMovil) {
-      this.log.warn('Telegram: no se pudieron parsear tasas en la ventana');
-      return null;
-    }
-    if (saldoMovil?.length) {
-      this.log.log(
-        `Saldo móvil (mediana CUP): ${saldoMovil.map((t) => `${t.amount}→${t.buy}/${t.sell}`).join(' · ')}`,
-      );
-    }
-
-    return {
-      base: 'CUP',
-      rates,
-      saldoMovil,
-      updatedAt: new Date().toISOString(),
-      sources: this.env.sources,
-      provisional: false,
-    };
+    return texts.length ? { texts, sources: this.env.sources } : null;
   }
 }

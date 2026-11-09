@@ -1,7 +1,16 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { TelegramService } from '../telegram/telegram.service';
+import { OpenWaService } from '../openwa/openwa.service';
+import { mergeRateLists, parseRatesFromTexts } from '../telegram/parse-rates';
+import { parseRatesWithLlm } from '../telegram/parse-rates-llm';
+import { parseSaldoMovilFromTexts } from '../telegram/parse-saldo';
 import { mergeRates, toSnapshot, withChange } from './change';
 import { loadSnapshot, saveSnapshot } from './snapshot-store';
+
+export type RateMessages = {
+  texts: string[];
+  sources: string[];
+};
 
 export type PriceChange = {
   buy: number;
@@ -62,45 +71,96 @@ export class RatesService implements OnModuleInit {
   // ponytail: cache hasta el próximo scan (0/12/18 Havana); no refrescar por request.
   private cache: RatesResponse | null = null;
 
-  constructor(private readonly telegram: TelegramService) {}
+  constructor(
+    private readonly telegram: TelegramService,
+    private readonly openwa: OpenWaService,
+  ) {}
 
   async onModuleInit() {
     await this.telegram.whenReady();
     this.log.log('Chequeo de precios al arranque…');
-    const data = await this.refreshFromTelegram();
+    const data = await this.refreshFromSources();
     this.logRates('arranque', data);
   }
 
-  /** Sirve cache; Telegram solo en arranque + worker 00/12/18 Havana. */
+  /** Sirve cache; Telegram/OpenWA solo en arranque + worker 00/12/18 Havana. */
   async getRates(): Promise<RatesResponse> {
     if (this.cache) return this.cache;
     await this.telegram.whenReady();
     if (this.cache) return this.cache;
-    return this.refreshFromTelegram();
+    return this.refreshFromSources();
   }
 
   /** Escaneo forzado (arranque / worker 3×/día). */
   async scanNow(label = 'manual'): Promise<RatesResponse> {
     await this.telegram.whenReady();
-    const data = await this.refreshFromTelegram();
+    const data = await this.refreshFromSources();
     this.logRates(label, data);
     return data;
   }
 
-  private async refreshFromTelegram(): Promise<RatesResponse> {
+  private async refreshFromSources(): Promise<RatesResponse> {
     let raw: RatesResponse = FALLBACK;
 
-    if (!this.telegram.isReady()) {
-      this.log.warn('Telegram no listo → usando tasas provisionales');
-    } else {
-      try {
-        const live = await this.telegram.fetchRates();
-        if (live) raw = live;
-        else this.log.warn('Sin tasas parseables → fallback');
-      } catch (err) {
+    const [telegramBatch, openWaBatch] = await Promise.all([
+      this.telegram.fetchMessages().catch((err: unknown) => {
         this.log.warn(
-          `Fallo al chequear precios: ${err instanceof Error ? err.message : err}`,
+          `Telegram falló: ${err instanceof Error ? err.message : err}`,
         );
+        return null;
+      }),
+      this.openwa.fetchMessages().catch((err: unknown) => {
+        this.log.warn(
+          `OpenWA falló: ${err instanceof Error ? err.message : err}`,
+        );
+        return null;
+      }),
+    ]);
+    const batches = [telegramBatch, openWaBatch].filter(
+      (batch): batch is RateMessages => batch !== null,
+    );
+    const texts = batches.flatMap((batch) => batch.texts);
+
+    if (!texts.length) {
+      this.log.warn(
+        'Sin mensajes recientes de Telegram/OpenWA → usando tasas provisionales',
+      );
+    } else {
+      const regexRates = parseRatesFromTexts(texts);
+      let llmRates = null as ReturnType<typeof parseRatesFromTexts>;
+      if (process.env.GROQ_API_KEY?.trim()) {
+        try {
+          llmRates = await parseRatesWithLlm(texts);
+          this.log.log(
+            llmRates?.length
+              ? `Groq LLM: ${llmRates.map((r) => `${r.currency} ${r.buy}/${r.sell}`).join(' · ')}`
+              : 'Groq LLM: sin tasas',
+          );
+        } catch (err) {
+          this.log.warn(
+            `Groq LLM falló → solo regex: ${err instanceof Error ? err.message : err}`,
+          );
+        }
+      }
+      const rates = mergeRateLists(llmRates, regexRates) ?? [];
+      const saldoMovil = parseSaldoMovilFromTexts(texts);
+
+      if (rates.length || saldoMovil) {
+        raw = {
+          base: 'CUP',
+          rates,
+          saldoMovil,
+          updatedAt: new Date().toISOString(),
+          sources: [...new Set(batches.flatMap((batch) => batch.sources))],
+          provisional: false,
+        };
+        if (saldoMovil?.length) {
+          this.log.log(
+            `Saldo móvil (mediana CUP): ${saldoMovil.map((t) => `${t.amount}→${t.buy}/${t.sell}`).join(' · ')}`,
+          );
+        }
+      } else {
+        this.log.warn('Sin tasas parseables → usando tasas provisionales');
       }
     }
 

@@ -2,7 +2,7 @@
 
 Consulta de tasas CUP ↔ USD / USDT / EUR / MLC.
 
-Las tasas salen de un **cliente MTProto** (cuenta normal de Telegram via [teleproto](https://docs.teleproto.dev/), fork de GramJS). Si no hay sesión configurada, usa valores provisionales.
+Las tasas salen de grupos de Telegram (MTProto) y, opcionalmente, de WhatsApp mediante tu instancia OpenWA. Se combinan los mensajes recientes de ambas fuentes para calcular la mediana. Si no hay ninguna fuente configurada, usa valores provisionales.
 
 ## Arranque (local)
 
@@ -26,7 +26,7 @@ Usuario → Vercel (Next / web) → VPS Nest (:3124 /rates)
 ```bash
 cd ~/La-Tasa
 cp api/.env.example api/.env
-nano api/.env   # TELEGRAM_*, CORS_ORIGIN=https://tu-app.vercel.app
+nano api/.env   # TELEGRAM_*, OPENWA_*, CORS_ORIGIN=https://tu-app.vercel.app
 ```
 
 Sesión Telegram: copia `TELEGRAM_SESSION` desde tu PC, o genera en el VPS:
@@ -97,3 +97,17 @@ Varios grupos en JSON (tu cuenta debe estar en todos):
 TELEGRAM_SOURCE=["RiC_Red_de_intercambio_CUBA","usdthabanaventaycompra","USD_Holguin","Cuba_Compra_Venta"]
 TELEGRAM_DAYS=3
 ```
+
+## WhatsApp (OpenWA)
+
+La API consulta la sesión existente de OpenWA; no crea ni vuelve a vincular la sesión. Configura en `api/.env` la URL accesible desde el contenedor de La Tasa, la API key y el ID real de sesión de OpenWA:
+
+```env
+OPENWA_API_URL=http://openwa:2785/api
+OPENWA_API_KEY=...
+OPENWA_SESSION_ID=sess_...
+OPENWA_SOURCE=["120363...@g.us"]
+OPENWA_DAYS=3
+```
+
+`OPENWA_SOURCE` acepta JID de grupo (`@g.us`) o el nombre exacto del grupo (se resuelve desde OpenWA; si hay nombres repetidos, usa el JID). Asegúrate de que la sesión esté `ready` y que OpenWA pueda acceder al historial de mensajes. Se leen hasta 200 mensajes por grupo y se filtran por `OPENWA_DAYS`. Una lista vacía desactiva WhatsApp sin afectar Telegram. Si OpenWA corre fuera de la red Docker de La Tasa, sustituye la URL por una dirección alcanzable desde la API.
