@@ -67,9 +67,24 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
       this.ready = true;
       this.log.log(`Sesión Telegram OK — entraste como ${who}`);
     } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
       this.log.error(
-        `No se pudo entrar a Telegram: ${err instanceof Error ? err.message : err}`,
+        `No se pudo entrar a Telegram: ${message}`,
       );
+      if (/concurrent usage|session was invalidated/i.test(message)) {
+        this.log.warn(
+          'Esta sesión parece estar activa en otro proceso. Deja una sola instancia usando TELEGRAM_SESSION; si Telegram ya la invalidó, genera una sesión nueva.',
+        );
+      }
+      if (this.client) {
+        try {
+          await this.client.disconnect();
+        } catch (disconnectErr) {
+          this.log.warn(
+            `No se pudo cerrar la conexión fallida de Telegram: ${disconnectErr instanceof Error ? disconnectErr.message : String(disconnectErr)}`,
+          );
+        }
+      }
       this.client = null;
       this.ready = false;
     }

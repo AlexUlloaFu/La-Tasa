@@ -1,5 +1,5 @@
 {
-  "name": "el-toque-v2",
+  "name": "la-tasa",
   "private": true,
   "workspaces": ["api", "web"],
   "scripts": {
