@@ -71,9 +71,18 @@ export class OpenWaService {
       this.log.log(`OpenWA: ${texts.length} mensajes útiles para tasas`);
       return texts.length ? { texts, sources } : null;
     } catch (err) {
-      this.log.warn(
-        `OpenWA API no disponible: ${describeError(err)}. Comprueba que OPENWA_API_URL sea alcanzable desde la red Docker de La Tasa.`,
-      );
+      const message = describeError(err);
+      if (/\b404\b/i.test(message) && /session.*not found/i.test(message)) {
+        this.log.warn(
+          `OpenWA no encuentra la sesión ${this.env.sessionId}. Copia el ID de una sesión existente desde el panel/API de OpenWA a OPENWA_SESSION_ID; debe estar en estado ready.`,
+        );
+        return null;
+      }
+      const networkHint =
+        /\b(fetch failed|ECONNREFUSED|ENOTFOUND|ETIMEDOUT)\b/i.test(message)
+          ? ' Comprueba que OPENWA_API_URL sea alcanzable desde la red Docker de La Tasa.'
+          : '';
+      this.log.warn(`OpenWA API request falló: ${message}.${networkHint}`);
       return null;
     }
   }
