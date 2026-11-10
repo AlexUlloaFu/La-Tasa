@@ -1,17 +1,31 @@
-# Contributing
+# Contribuir a La Tasa
 
-Thanks for your interest in La Tasa. Contributions are welcome, but submitting
-a change does not guarantee that it will be accepted or merged.
+Gracias por tu interés. Las contribuciones son bienvenidas; enviar un cambio no garantiza que se acepte o se mergee.
 
-## Proposing a change
+## Qué aportamos
 
-1. Open an issue describing the problem or proposed change.
-2. Keep pull requests focused and include the reason for the change.
-3. Run `npm run check` and `npm run build --workspace=api` before submitting.
-4. Do not include credentials, session strings, personal data, or production
-   configuration in issues, commits, or pull requests.
+### 1. Fuentes (Telegram / WhatsApp)
 
-The repository owner is the initial maintainer and has final authority over
-the official repository, its roadmap, accepted contributions, and releases.
-Contributors retain copyright to their contributions and submit them under
-the repository's MIT License.
+Buscamos grupos donde se publiquen **con frecuencia** precios de compra/venta del mercado informal (sobre todo **efectivo**).
+
+Abre un issue con título `Fuente: …` e incluye:
+
+- Cómo encontrar el grupo (username/enlace Telegram, o identificador WhatsApp)
+- Monedas que suelen cotizar
+- Efectivo vs transferencia (o ambas)
+- Ciudad / alcance, si aplica
+- Frecuencia aproximada de mensajes útiles
+- Que el acceso al grupo sea legítimo
+
+Priorizamos grupos activos y cotizaciones claras. Las fuentes se revisan antes de sumarlas a la configuración por defecto o a la documentación.
+
+### 2. Código, bugs y documentación
+
+1. Abre un issue describiendo el problema o la propuesta.
+2. Mantén los pull requests enfocados y explica el _porqué_.
+3. Antes de enviar: `npm run check` y, si tocaste el API, `npm run build --workspace=api`.
+4. No incluyas credenciales, strings de sesión, datos personales ni configuración de producción en issues, commits o PRs.
+
+## Criterios
+
+El dueño del repositorio es el mantenedor inicial y tiene la última palabra sobre el repo oficial, el roadmap, qué se acepta y los releases. Quienes contribuyen conservan el copyright de su aporte y lo envían bajo la licencia MIT del proyecto.

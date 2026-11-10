@@ -1,10 +1,58 @@
 # La Tasa
 
-Consulta de tasas CUP ↔ USD / USDT / EUR / MLC.
+**La Tasa** nace como una alternativa abierta para consultar la tasa de cambio del **mercado informal** en Cuba.
 
-Las tasas salen de grupos de Telegram (MTProto) y, opcionalmente, de WhatsApp mediante tu instancia OpenWA. Se combinan los mensajes recientes de ambas fuentes para calcular la mediana. Si no hay ninguna fuente configurada, usa valores provisionales.
+La única referencia son publicaciones reales de personas que compran y venden divisas: hoy se leen **grupos de Telegram** y se está trabajando en integrar **WhatsApp**. La idea es acercar **transparencia** y **consistencia** entre los distintos valores que se le dan a las monedas más usadas en el país (USD, EUR, USDT, Zelle, MLC y otras), en lugar de depender de una sola fuente opaca o de un número fijado a mano.
 
-## Arranque (local)
+No inventamos el precio: agregamos lo que la gente publica, filtramos ruido (por ejemplo cotizaciones solo por transferencia cuando buscamos efectivo) y calculamos una **mediana** de compra y venta.
+
+> Proyecto open source · licencia [MIT](./LICENSE)
+
+---
+
+## Por qué existe
+
+En el día a día conviven muchas tasas distintas según el grupo, la ciudad o el canal. Eso genera confusión. La Tasa intenta:
+
+- Partir de **fuentes públicas** (chats donde ya se cotiza)
+- Mostrar un resumen **reproducible** (misma ventana de mensajes → misma lógica)
+- Dejar el método y el código a la vista para que cualquiera pueda auditarlo, mejorarlo o montar su propia instancia
+
+Telegram es la fuente principal. WhatsApp (vía OpenWA) está en camino / integración progresiva.
+
+---
+
+## Cómo contribuir
+
+Cualquier ayuda suma. En particular **aceptamos aportes de fuentes**:
+
+### Grupos de Telegram o WhatsApp
+
+Si conoces (o administras) un grupo donde se publiquen **con frecuencia** precios de compra/venta en efectivo de divisas usadas en Cuba, puedes proponerlo:
+
+1. Abre un [issue](../../issues) con el título `Fuente: …`
+2. Incluye:
+   - Enlace o username del grupo (Telegram) / cómo identificarlo (WhatsApp)
+   - Qué monedas suelen cotizar (USD, EUR, USDT, Zelle, MLC, …)
+   - Si cotizan **efectivo**, transferencia o ambas
+   - Ciudad / alcance si aplica
+   - Frecuencia aproximada de mensajes útiles
+3. Confirma que el grupo es accesible de forma legítima (sin scrapear contenido privado sin permiso)
+
+Las fuentes se revisan antes de añadirlas: preferimos grupos activos, con cotizaciones claras y, idealmente, de efectivo.
+
+### Código, bugs y mejoras
+
+- Abre un issue describiendo el problema o la idea
+- Envía un PR enfocado (un cambio = un propósito)
+- Corre `npm run check` (y el build del API si tocaste backend) antes de mandar el PR
+- **Nunca** subas credenciales, sesiones de Telegram/WhatsApp, `.env` reales ni datos personales
+
+Detalle en [CONTRIBUTING.md](./CONTRIBUTING.md). El mantenedor decide qué entra al repo oficial; la licencia MIT también permite forks independientes.
+
+---
+
+## Arranque local
 
 ```bash
 npm install
@@ -13,127 +61,88 @@ npm run dev:api   # Nest :3124
 npm run dev:web   # Next :3000
 ```
 
-Abre http://localhost:3000 · API: `GET http://localhost:3124/rates`
+- Web: http://localhost:3000
+- API: `GET http://localhost:3124/rates`
 
-## Front en Vercel + API en VPS
+---
+
+## Arquitectura típica
 
 ```
-Usuario → Vercel (Next / web) → VPS Nest (:3124 /rates)
+Usuario → Vercel (Next / web) → API en VPS (Nest :3124 /rates)
 ```
 
-### 1) Backend en el VPS (Docker)
+Las tasas se leen de Telegram (MTProto) y, si está configurado, de WhatsApp (OpenWA). Sin fuentes → valores provisionales.
+
+### Backend en el VPS (Docker)
 
 ```bash
 cd ~/La-Tasa
-cp api/.env.example api/.env
-nano api/.env   # TELEGRAM_*, OPENWA_*, CORS_ORIGIN=https://tu-app.vercel.app
+git pull
+cp api/.env.example api/.env   # solo la primera vez
+nano api/.env                  # TELEGRAM_*, OPENWA_*, CORS_ORIGIN, GROQ_API_KEY opcional
+docker compose up -d --build
+curl http://127.0.0.1:3124/rates
 ```
 
-Para usar OpenWA en otra instalación Docker, conecta ambos servicios a una red Docker externa
-compartida llamada `openwa-shared`. OpenWA debe estar desplegado antes de levantar La Tasa.
+Actualizar después de un `git pull`:
 
-Sesión Telegram: copia `TELEGRAM_SESSION` desde tu PC, o genera en el VPS:
+```bash
+docker compose up -d --build
+```
+
+Sesión Telegram (una sola instancia activa por sesión):
 
 ```bash
 npm install && npm run telegram:login --workspace=api
 # pega TELEGRAM_SESSION en api/.env
 ```
 
-Usa esa sesión en **una sola instancia de la API**. No ejecutes `telegram:login`
-ni otra copia de la API con la misma sesión mientras el contenedor esté activo.
+Worker embebido: escanea a las **00:00, 12:00 y 18:00** (`America/Havana`).
 
-```bash
-docker compose up -d --build
-curl http://127.0.0.1:3124/rates
-docker compose logs -f api
-```
+### Frontend en Vercel
 
-Expón con Nginx + HTTPS → `https://api.tudominio.com` → `127.0.0.1:3124`.
+- Root Directory: `web`
+- Env: `API_URL` = URL pública del API (`https://api.tudominio.com`)
 
-### 2) Frontend en Vercel
-
-- Importa el repo
-- **Root Directory:** `web`
-- Framework: Next.js
-- Env var:
-  - `API_URL` = `https://api.tudominio.com`
-
-Deploy. El server de Next llama al VPS en cada request (`cache: 'no-store'`).
-
-Local:
+Local (`web/.env.local`):
 
 ```env
-# web/.env.local
 API_URL=http://localhost:3124
 ```
 
-En Vercel (prod): `API_URL=https://api.tudominio.com`
-
-## Docker (API)
-
-```bash
-docker compose up -d --build   # http://VPS:3124/rates
-docker compose logs -f api
-docker compose pull && docker compose up -d --build   # tras git pull
-```
-
-El worker (00:00 / 12:00 / 18:00 Havana) vive en el mismo contenedor.
-
-Para OpenWA, `OPENWA_SESSION_ID` debe ser el UUID de una sesión que ya exista
-en el panel de OpenWA; el ID no es el nombre de la sesión. Si La Tasa registra
-`Session with id ... not found`, corrige ese valor en `api/.env`. Si la sesión
-no aparece en OpenWA, créala/iníciala allí y completa el QR antes de configurar
-La Tasa. Debe estar en estado `READY` para leer los grupos.
-
-### Recuperar sesión Telegram invalidada
-
-Si los logs muestran `Concurrent usage of the current session`, detén la API y
-comprueba que no haya otra copia de La Tasa usando la misma sesión (incluyendo
-otro proyecto Docker o una ejecución local):
-
-```bash
-docker compose stop api
-docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}'
-```
-
-Deja una sola instancia usando esa sesión. Como Telegram puede haber invalidado
-la sesión, genera una nueva solo después de detener las demás instancias:
-
-```bash
-npm run telegram:login --workspace=api
-# reemplaza TELEGRAM_SESSION en api/.env por el valor nuevo
-docker compose up -d --build --force-recreate api
-docker compose logs --tail=100 api
-```
+---
 
 ## Telegram (MTProto)
 
 1. Crea `api_id` / `api_hash` en https://my.telegram.org
-2. Ponlos en `api/.env`
-3. Login interactivo (una vez):
-
-```bash
-npm run telegram:login --workspace=api
-```
-
-4. Copia el `TELEGRAM_SESSION=...` que imprime al `.env`
-5. Asegura que esa cuenta esté en el grupo (`TELEGRAM_SOURCE`, por defecto `usdthabanaventaycompra`)
-6. Reinicia el API
-
-Sin sesión → fallback hardcodeado. Con sesión → lee mensajes de los últimos `TELEGRAM_DAYS` (default 3), calcula **mediana** de compra/venta por moneda, cache 5 min.
-
-Worker embebido: escanea a las **00:00, 12:00 y 18:00** (`America/Havana`) automáticamente al tener la API arriba.
-
-Varios grupos en JSON (tu cuenta debe estar en todos):
+2. Ponlos en `api/.env` y corre `npm run telegram:login --workspace=api`
+3. La cuenta debe estar en los grupos de `TELEGRAM_SOURCE`
+4. Varios grupos:
 
 ```env
 TELEGRAM_SOURCE=["RiC_Red_de_intercambio_CUBA","usdthabanaventaycompra","USD_Holguin","Cuba_Compra_Venta"]
 TELEGRAM_DAYS=3
 ```
 
+Opcional: `GROQ_API_KEY` (Groq free) para ayudar a interpretar mensajes difíciles (emoji, multilínea). El regex sigue siendo la base.
+
+### Sesión invalidada / “Concurrent usage”
+
+Una sesión = una sola API. Si hay conflicto:
+
+```bash
+docker compose stop api
+npm run telegram:login --workspace=api
+# actualiza TELEGRAM_SESSION
+docker compose up -d --build --force-recreate api
+```
+
+---
+
 ## WhatsApp (OpenWA)
 
-La API consulta la sesión existente de OpenWA; no crea ni vuelve a vincular la sesión. Configura en `api/.env` la URL accesible desde el contenedor de La Tasa, la API key y el ID real de sesión de OpenWA:
+La API usa una sesión **ya existente** en OpenWA (no crea el QR). Red Docker externa `openwa-shared` entre La Tasa y OpenWA.
 
 ```env
 OPENWA_API_URL=http://openwa:2785/api
@@ -143,12 +152,10 @@ OPENWA_SOURCE=["120363...@g.us"]
 OPENWA_DAYS=3
 ```
 
-`OPENWA_SOURCE` acepta JID de grupo (`@g.us`) o el nombre exacto del grupo (se resuelve desde OpenWA; si hay nombres repetidos, usa el JID). Asegúrate de que la sesión esté `ready` y que OpenWA pueda acceder al historial de mensajes. Se leen hasta 200 mensajes por grupo y se filtran por `OPENWA_DAYS`. Una lista vacía desactiva WhatsApp sin afectar Telegram. El API y OpenWA deben compartir la red externa `openwa-shared`; usa `http://openwa:2785/api` como URL dentro de Docker.
+Lista vacía = WhatsApp desactivado. La sesión debe estar `READY`.
 
-## Licencia y contribuciones
+---
 
-La Tasa se distribuye bajo la licencia [MIT](./LICENSE). Consulta
-[CONTRIBUTING.md](./CONTRIBUTING.md) para proponer cambios. El mantenedor del
-repositorio oficial decide qué contribuciones se aceptan y cuándo se publican
-versiones; la licencia también permite a terceros crear y mantener sus propios
-forks.
+## Licencia
+
+[MIT](./LICENSE) — úsala, audítala, mejórala y, si puedes, **comparte fuentes** para que la mediana refleje mejor el mercado real.
